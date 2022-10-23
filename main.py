@@ -27,8 +27,8 @@ class Item(BaseModel):
 
 #classe para o ESTOQUE
 class Estoque(BaseModel):
-    tamanho: int
-    estoque: list[Item]
+    quantidade: int
+    itens: list[Item]
 
 #classe para Mensagem
 class Message(BaseModel):
