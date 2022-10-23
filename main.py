@@ -1,6 +1,12 @@
 from operator import gt
-from fastapi import FastAPI, Path, Query, HTTPException, Body
+from fastapi import FastAPI, Path, Query, HTTPException, Body, status
 from pydantic import BaseModel
+from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from enum import Enum
+
 
 
 app = FastAPI()
@@ -24,9 +30,26 @@ class Estoque(BaseModel):
     tamanho: int
     estoque: list[Item]
 
+class Message(BaseModel):
+    info : str
+
+class Tags(Enum):
+    items:str = "Items"
+    inventario:str = "Inventário"
+    
+#decoretor para exception handler
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return await request_validation_exception_handler(request, exc)
+
 @app.get("/item", 
-        status_code=200, 
-        tags=["items"],
+        status_code=status.HTTP_200_OK, 
+        tags=[Tags.inventario],
         summary="Obtem todos os itens",
         response_model=Estoque
 )
@@ -71,8 +94,8 @@ async def get_itens():
 
 @app.get("/item/{item_id}", 
         response_model=Item, 
-        status_code=200, 
-        tags=["items"],
+        status_code=status.HTTP_200_OK, 
+        tags=[Tags.items],
         summary="Obtem um item específico",
 )
 async def get_item(item_id: int = Path(title="O id correspondente ao item obter", ge=0)):
@@ -93,15 +116,15 @@ async def get_item(item_id: int = Path(title="O id correspondente ao item obter"
         além da descrição e tags relacionadas, caso possua
     """
     if item_id >= len(items):
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     
     return items[item_id]
 
 
 @app.put("/item/{item_id}", 
-        tags=["items"],
+        tags=[Tags.items],
         response_model=Item, 
-        status_code=200, 
+        status_code=status.HTTP_200_OK, 
         summary="Atualiza um item",
 )
 async def update_item(Item: Item,
@@ -124,8 +147,63 @@ async def update_item(Item: Item,
     """
     
     if item_id >= len(items):
-            raise HTTPException(status_code=404, detail="Item not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     
     items[item_id] = Item
     return Item 
+
+
+@app.delete("/item/{item_id}", 
+        status_code=status.HTTP_200_OK, 
+        tags=[Tags.items],
+        summary="Deleta um item",
+        response_model=Message,
+)
+async def delete_item(item_id: int = Path(title="O id correspondente ao item que deseja deletar", ge=0)):
+    """
+    Deleta um item da base de dados que corresponda ao id desejado
+    
+    Args:
+    
+        item_id (int):  id relacionado a um item da base de dados
+
+    Exceções:
+    
+        HTTPException: o id não corresponde a um item da base para ser deletado
+        
+    Retorno:
+    
+        info (str): Uma string informando que houve sucesso no 
+        processo de delete do item desejado
+    """
+    if item_id >= len(items):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    del items[item_id]
+    return {"info": "o item foi deletado com sucesso"}
+    
+
+
+@app.post("/item", 
+        status_code=status.HTTP_201_CREATED, 
+        tags=[Tags.items],
+        summary="Cria um item",
+        response_model=Item, 
+)
+async def create_item(Item: Item):
+    """
+    Cria um item com todas as informações:
+
+    Args:
+    
+        Item (Item): Um item com informações como **Nome**, **Preco**, 
+        **Descricao** e uma lista de **Tags**
+
+    Retorno:
+    
+        Item: Retorna o item que foi adicionado no banco de dados
+    """
+    items.append(Item)
+
+    return Item
     
