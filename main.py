@@ -30,6 +30,7 @@ class Estoque(BaseModel):
     tamanho: int
     estoque: list[Item]
 
+#classe para Mensagem
 class Message(BaseModel):
     info : str
 
