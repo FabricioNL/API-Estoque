@@ -1,26 +1,25 @@
 from tkinter import CASCADE
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float
+from sqlalchemy.orm import relationship, backref
 
 from database import Base
 
-class User(Base):
-    __tablename__ = "users"
+class Movimentacao(Base):
+    __tablename__ = "movimentacao"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(300), unique=True, index=True)
-    hashed_password = Column(String(80))
-    is_active = Column(Boolean, default=True)
-
-    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
-
-
+    item_id = Column(Integer, ForeignKey("items.id"))
+    qtd = Column(Integer)
+    resume = Column(String(100), index = True)
+    owner = relationship("Item", back_populates="movimentacoes")
+     
 class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(30), index=True)
+    qtd = Column(Integer, index=True, default=0)
     description = Column(String(100), index=True)
-    owner_id = Column(Integer, ForeignKey("users.id"))
-
-    owner = relationship("User", back_populates="items")
+    price = Column(Float, index=True)
+    is_active = Column(Boolean, default=True)
+    movimentacoes = relationship("Movimentacao", back_populates="owner", cascade="all, delete-orphan")
