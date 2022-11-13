@@ -7,19 +7,27 @@ from fastapi.exception_handlers import http_exception_handler, request_validatio
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from enum import Enum
 
-
-
 app = FastAPI()
 
 #exemplo de base de dados
 items = [
-    {"nome": "Foo", "preco": 50.2},
-    {"nome": "Bar", "descricao": "The bartenders", "preco": 62},
-    {"nome": "Baz", "descricao": None, "preco": 50.2,  "tags": []}
+    {"id": 1, "nome": "Foo", "preco": 50.2},
+    {"id": 2, "nome": "Bar", "descricao": "The bartenders", "preco": 62},
+    {"id": 3, "nome": "Baz", "descricao": None, "preco": 50.2,  "tags": []}
 ]
+
+
+def contem_id(int_id, database):
+    ind_list = 0
+    for row in database:
+        if row['id'] == (int_id):
+            return database[ind_list], ind_list
+        ind_list += 1
+    return None, None
 
 #classe para ITEM
 class Item(BaseModel):
+    id: int
     nome: str
     descricao: str | None = None
     preco: float 
@@ -116,10 +124,13 @@ async def get_item(item_id: int = Path(title="O id correspondente ao item obter"
         Item: retorna um item com nome, preço, 
         além da descrição e tags relacionadas, caso possua
     """
-    if item_id >= len(items):
+    
+    data = contem_id(item_id, items)
+    
+    if data[0] == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     
-    return items[item_id]
+    return data[0]
 
 
 @app.put("/item/{item_id}", 
@@ -147,10 +158,11 @@ async def update_item(Item: Item,
         Item: o item que foi atualizado
     """
     
-    if item_id >= len(items):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    data = contem_id(item_id, items)
+    if data == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     
-    items[item_id] = Item
+    items[data[1]] = Item
     return Item 
 
 
@@ -177,10 +189,12 @@ async def delete_item(item_id: int = Path(title="O id correspondente ao item que
         info (str): Uma string informando que houve sucesso no 
         processo de delete do item desejado
     """
-    if item_id >= len(items):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    data = contem_id(item_id, items)
+    
+    if data[0] == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    del items[item_id]
+    del items[data[1]]
     return {"info": "o item foi deletado com sucesso"}
     
 
@@ -204,7 +218,12 @@ async def create_item(Item: Item):
     
         Item: Retorna o item que foi adicionado no banco de dados
     """
-    items.append(Item)
-
+    corp = Item.dict()
+    response = contem_id(corp['id'], items)
+    
+    if response[0] != None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Item already exists with this id")
+    
+    items.append(corp)
     return Item
     
